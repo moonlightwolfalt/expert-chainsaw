@@ -88,11 +88,12 @@ section.pane { margin-top: 22px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; transition: transform .12s, border-color .12s; }
 .card:hover { transform: translateY(-2px); }
-.card .art { height: 74px; display: grid; place-items: center; position: relative; font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 2.1rem; letter-spacing: .02em; }
+.card .art { height: 84px; display: grid; place-items: center; position: relative; font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 2.1rem; letter-spacing: .02em; }
 .card.mythic .art { background: linear-gradient(135deg, var(--mythic-soft), color-mix(in srgb, var(--mythic) 45%, var(--mythic-soft))); color: var(--mythic); }
 .card.exotic .art { background: linear-gradient(135deg, var(--exotic-soft), color-mix(in srgb, var(--exotic) 45%, var(--exotic-soft))); color: var(--exotic); }
 .card.mythic { border-color: color-mix(in srgb, var(--mythic) 50%, var(--line)); }
 .card.exotic { border-color: color-mix(in srgb, var(--exotic) 50%, var(--line)); }
+.card .art img { position: relative; z-index: 0; width: 100%; height: 100%; object-fit: contain; padding: 6px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .card .art::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, transparent 0 10px, rgba(255,255,255,.07) 10px 12px); }
 .card .body { padding: 8px 9px 9px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .card .name { font-weight: 600; font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
@@ -203,6 +204,8 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
     if (/DMR|Sniper|Tracker|Bow|Boom Bolt/i.test(n)) return "Marksman";
     return "Rifle";
   }
+  var HAS_IMG = {};
+  ["goldenapple","julesglidergun","thefoundationsriftrifle","nightrosesveiledprecisionsmg","enhancedsentinelshotgun","enhancedsurgefiresmg","enhancedtwinfireautoshotgun","enhancedonishotgun","enhancedhavocshotgun","cerberusgatekeepershotgun","sidewaysminigun","sidewaysrifle","enhancedfuryar","enhancedholotwisterar","baronsdoubledownpistol","lawlessaccelerantholotwisterar"].forEach(function (k) { HAS_IMG[k] = 1; });
   function initials(n) {
     var w = n.replace(/\(.*?\)/g, "").split(/\s+/).filter(function (x) { return !/^(the|of|n|'n')$/i.test(x); });
     var s = (w[0] || "?")[0] + ((w[1] || "")[0] || "");
@@ -265,9 +268,16 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
     var tags = '<span class="tag">' + it.type + '</span>';
     if (it.isNew) tags += '<span class="tag new">New</span>';
     if (!it.main) tags += '<span class="tag dev">Dev only</span>';
-    b.innerHTML = '<span class="tick" aria-hidden="true">&#10003;</span><span class="art" aria-hidden="true">' + initials(it.name) + '</span>' +
+    b.innerHTML = '<span class="tick" aria-hidden="true">&#10003;</span><span class="art" aria-hidden="true"></span>' +
       '<span class="body"><span class="name"></span><span class="tags">' + tags + '</span></span>';
     b.querySelector(".name").textContent = it.name;
+    var art = b.querySelector(".art");
+    if (HAS_IMG[it.id]) {
+      var im = document.createElement("img");
+      im.alt = ""; im.loading = "lazy"; im.src = "img/" + it.id + ".webp";
+      im.onerror = function () { im.remove(); art.textContent = initials(it.name); };
+      art.appendChild(im);
+    } else art.textContent = initials(it.name);
     b.addEventListener("click", function () {
       if (done[it.id]) delete done[it.id]; else done[it.id] = 1;
       saveDone(); render();
