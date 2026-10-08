@@ -192,8 +192,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
   ];
   var RETIRED = [
     ["Banned chest", [["The Foundation's MK-Seven AR","Mythic"],["The Foundation's Power Gloves","Mythic"],["Mythic Vector 7 DMR","Mythic"]]],
-    ["Legendary (orange tier)", [["Precision Air Strike","Legendary"]]],
-    ["Vaulted in Reload v42.20", [["Hammer Assault Rifle"],["Suppressed Assault Rifle"],["Iron Pump Shotgun"],["Twinmag SMG"],["Ranger Pistol"],["Tactical Pistol"],["Pistol"],["Slapperoni Slice"],["Chug Splash"]]]
+    ["Legendary (orange tier)", [["Precision Air Strike","Legendary"]]]
   ];
 
   function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, ""); }
@@ -241,7 +240,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
     var o = document.createElement("option"); o.value = i ? t : ""; o.textContent = t; typeSel.appendChild(o);
   });
 
-  var TABS = [["mythic", "Mythics"], ["exotic", "Exotics"], ["dev", "Dev chests"], ["retired", "Banned & vaulted"]];
+  var TABS = [["mythic", "Mythics"], ["exotic", "Exotics"], ["dev", "Dev chests"], ["retired", "Banned & legendary"]];
   var tabsEl = $("tabs");
   TABS.forEach(function (t) {
     var b = document.createElement("button");
@@ -329,7 +328,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
 
   function renderRetired(pane) {
     pane.textContent = "";
-    pane.appendChild(head("Banned & vaulted", "Not tracked. Banned mythics also appear in the main Mythics tab."));
+    pane.appendChild(head("Banned & legendary", "Not tracked. Banned mythics also appear in the main Mythics tab."));
     RETIRED.forEach(function (grp) {
       var g = document.createElement("div"); g.className = "group";
       var gh = document.createElement("div"); gh.className = "group-head";
@@ -343,7 +342,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
         d.innerHTML = "<div class='name'></div><div class='why'></div>";
         if (HAS_IMG[slug(a[0])]) { var ri = document.createElement("img"); ri.className = "ret-art"; ri.alt = ""; ri.src = "img/" + slug(a[0]) + ".webp"; d.insertBefore(ri, d.firstChild); }
         d.querySelector(".name").textContent = a[0];
-        d.querySelector(".why").textContent = a[1] || "Vaulted";
+        d.querySelector(".why").textContent = a[1] || "";
         r.appendChild(d);
       });
       g.appendChild(r); pane.appendChild(g);
