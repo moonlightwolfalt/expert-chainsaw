@@ -109,6 +109,7 @@ section.pane { margin-top: 22px; }
 
 .retired { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .ret { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-width: 0; }
+.ret-art { display: block; width: 100%; height: 84px; object-fit: contain; margin-bottom: 6px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .ret .name { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
 .ret .why { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .empty { color: var(--muted); padding: 24px 0; }
@@ -205,7 +206,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
     return "Rifle";
   }
   var HAS_IMG = {};
-  ["goldenapple","julesglidergun","thefoundationsriftrifle","nightrosesveiledprecisionsmg","enhancedsentinelshotgun","enhancedsurgefiresmg","enhancedtwinfireautoshotgun","enhancedonishotgun","enhancedhavocshotgun","cerberusgatekeepershotgun","sidewaysminigun","sidewaysrifle","enhancedfuryar","enhancedholotwisterar","baronsdoubledownpistol","lawlessaccelerantholotwisterar"].forEach(function (k) { HAS_IMG[k] = 1; });
+  ["goldenapple","julesglidergun","thefoundationsriftrifle","nightrosesveiledprecisionsmg","enhancedsentinelshotgun","enhancedsurgefiresmg","enhancedtwinfireautoshotgun","enhancedonishotgun","enhancedhavocshotgun","cerberusgatekeepershotgun","sidewaysminigun","sidewaysrifle","enhancedfuryar","enhancedholotwisterar","baronsdoubledownpistol","lawlessaccelerantholotwisterar","unstablethunderclapdmr","boomsniperrifle","unstablevoltageburstpistol","lawlessexplosivemammothpistol","lawlesstrackingsniper","lawlessstinkrifle","eradicatorshocknslowlauncher","lawlessshockwaverpg","lawlessslapcannon","lawlessslapjug","exoticslapberryfizz","precisionairstrike","spicyslapperonipizza","unstableyoinkshotgun","unstablefrostfireshotgun"].forEach(function (k) { HAS_IMG[k] = 1; });
   function initials(n) {
     var w = n.replace(/\(.*?\)/g, "").split(/\s+/).filter(function (x) { return !/^(the|of|n|'n')$/i.test(x); });
     var s = (w[0] || "?")[0] + ((w[1] || "")[0] || "");
@@ -275,9 +276,9 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
     if (HAS_IMG[it.id]) {
       var im = document.createElement("img");
       im.alt = ""; im.loading = "lazy"; im.src = "img/" + it.id + ".webp";
-      im.onerror = function () { im.remove(); art.textContent = initials(it.name); };
+      im.onerror = function () { im.remove(); };
       art.appendChild(im);
-    } else art.textContent = initials(it.name);
+    }
     b.addEventListener("click", function () {
       if (done[it.id]) delete done[it.id]; else done[it.id] = 1;
       saveDone(); render();
@@ -340,6 +341,7 @@ footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align
       grp[1].forEach(function (a) {
         var d = document.createElement("div"); d.className = "ret";
         d.innerHTML = "<div class='name'></div><div class='why'></div>";
+        if (HAS_IMG[slug(a[0])]) { var ri = document.createElement("img"); ri.className = "ret-art"; ri.alt = ""; ri.src = "img/" + slug(a[0]) + ".webp"; d.insertBefore(ri, d.firstChild); }
         d.querySelector(".name").textContent = a[0];
         d.querySelector(".why").textContent = a[1] || "Vaulted";
         r.appendChild(d);
