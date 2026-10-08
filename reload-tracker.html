@@ -1,0 +1,377 @@
+<title>Reload Loot Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky progress header over tabbed card grids; tiles are toggles, gold = mythic, cyan = exotic. */
+:root {
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface-2: #e9ebf3;
+  --line: #d3d7e4;
+  --fg: #151826;
+  --muted: #5b6179;
+  --mythic: #b97a00;
+  --mythic-soft: #fff1cf;
+  --exotic: #007b95;
+  --exotic-soft: #d6f3fa;
+  --custom: #6d3fd1;
+  --custom-soft: #e8defc;
+  --good: #1a8a4a;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0d17; --surface: #151827; --surface-2: #1d2135; --line: #2b3050;
+    --fg: #eef0fa; --muted: #98a0c0;
+    --mythic: #ffbf2e; --mythic-soft: #3a2a07;
+    --exotic: #35d3f2; --exotic-soft: #0a3340;
+    --custom: #b18cff; --custom-soft: #2c2050;
+    --good: #4fd98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0d17; --surface: #151827; --surface-2: #1d2135; --line: #2b3050;
+  --fg: #eef0fa; --muted: #98a0c0;
+  --mythic: #ffbf2e; --mythic-soft: #3a2a07;
+  --exotic: #35d3f2; --exotic-soft: #0a3340;
+  --custom: #b18cff; --custom-soft: #2c2050;
+  --good: #4fd98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin-inline: auto; padding-inline: 16px; padding-block: 20px 56px; }
+h1, h2, h3 { font-family: var(--font-display); font-style: italic; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--exotic); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1; }
+h1 .m { color: var(--mythic); }
+.meta { color: var(--muted); font-size: 13px; }
+
+.meters { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 10px; margin-top: 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; border-bottom: 1px solid var(--line); }
+.meter { min-width: 0; }
+.meter .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.meter .lbl { font-family: var(--font-display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 1.05rem; }
+.meter .num { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.bar { height: 8px; background: var(--surface-2); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; transition: width .25s; }
+.meter.mythic .lbl { color: var(--mythic); } .meter.mythic .bar i { background: var(--mythic); }
+.meter.exotic .lbl { color: var(--exotic); } .meter.exotic .bar i { background: var(--exotic); }
+.meter.total .lbl { color: var(--fg); } .meter.total .bar i { background: var(--good); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font-weight: 600; font-size: 14px; }
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tab .n { font-family: var(--font-mono); font-size: 12px; opacity: .7; margin-left: 4px; }
+.spacer { flex: 1 1 0; }
+input[type="search"], select { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 14px; min-width: 0; }
+input[type="search"] { width: 200px; max-width: 100%; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.chip[aria-pressed="true"] { background: var(--exotic-soft); border-color: var(--exotic); color: var(--exotic); }
+
+section.pane { margin-top: 22px; }
+.sec-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 10px; }
+.sec-head h2 { font-size: 1.7rem; }
+.sec-head .sub { color: var(--muted); font-size: 13px; }
+.group { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.group h3 { font-size: 1.25rem; color: var(--custom); }
+.group .sub { color: var(--muted); font-size: 12.5px; font-family: var(--font-mono); margin-left: 8px; font-style: normal; text-transform: none; }
+.group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; margin-bottom: 10px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; transition: transform .12s, border-color .12s; }
+.card:hover { transform: translateY(-2px); }
+.card .art { height: 74px; display: grid; place-items: center; position: relative; font-family: var(--font-display); font-style: italic; font-weight: 800; font-size: 2.1rem; letter-spacing: .02em; }
+.card.mythic .art { background: linear-gradient(135deg, var(--mythic-soft), color-mix(in srgb, var(--mythic) 45%, var(--mythic-soft))); color: var(--mythic); }
+.card.exotic .art { background: linear-gradient(135deg, var(--exotic-soft), color-mix(in srgb, var(--exotic) 45%, var(--exotic-soft))); color: var(--exotic); }
+.card.mythic { border-color: color-mix(in srgb, var(--mythic) 50%, var(--line)); }
+.card.exotic { border-color: color-mix(in srgb, var(--exotic) 50%, var(--line)); }
+.card .art::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, transparent 0 10px, rgba(255,255,255,.07) 10px 12px); }
+.card .body { padding: 8px 9px 9px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.card .name { font-weight: 600; font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
+.card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+.tag { font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; background: var(--surface-2); color: var(--muted); }
+.tag.new { background: var(--good); color: #fff; }
+.tag.dev { background: var(--custom-soft); color: var(--custom); }
+.tick { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,.75); background: rgba(0,0,0,.25); display: grid; place-items: center; z-index: 1; color: transparent; font-size: 14px; font-weight: 800; }
+.card[aria-pressed="true"] { border-color: var(--good); }
+.card[aria-pressed="true"] .tick { background: var(--good); border-color: var(--good); color: #fff; }
+.card[aria-pressed="true"] .art, .card[aria-pressed="true"] .body { opacity: .55; }
+.card[aria-pressed="true"] .name { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.retired { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ret { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-width: 0; }
+.ret .name { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.ret .why { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.empty { color: var(--muted); padding: 24px 0; }
+
+footer { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; color: var(--muted); font-size: 13px; }
+.link { background: none; border: 0; padding: 0; text-decoration: underline; color: var(--fg); }
+.danger { color: #d33a3a; }
+@media (max-width: 560px) {
+  .meters { gap: 8px; }
+  .meter .lbl { font-size: .9rem; }
+  .meter .num { font-size: 11px; }
+  .grid, .retired { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .card, .bar i { transition: none; } .card:hover { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Reload <span class="m">Mythics</span> &amp; Exotics</h1>
+    <div class="meta">Fan-made tracker &middot; pool as of September 2026 &middot; progress saves in this browser</div>
+  </header>
+
+  <div class="meters" aria-label="Collection progress">
+    <div class="meter mythic"><div class="row"><span class="lbl">Mythics</span><span class="num" id="n-mythic"></span></div><div class="bar"><i id="b-mythic"></i></div></div>
+    <div class="meter exotic"><div class="row"><span class="lbl">Exotics</span><span class="num" id="n-exotic"></span></div><div class="bar"><i id="b-exotic"></i></div></div>
+    <div class="meter total"><div class="row"><span class="lbl">Dev chest only</span><span class="num" id="n-dev"></span></div><div class="bar"><i id="b-dev"></i></div></div>
+  </div>
+
+  <div class="controls">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <span class="spacer"></span>
+    <input type="search" id="q" placeholder="Search weapons" aria-label="Search weapons">
+    <select id="type" aria-label="Filter by weapon type"></select>
+    <select id="show" aria-label="Filter by status">
+      <option value="all">All</option>
+      <option value="missing">Still missing</option>
+      <option value="done">Collected</option>
+    </select>
+    <button class="chip" id="newonly" aria-pressed="false">New this season</button>
+  </div>
+
+  <section class="pane" id="pane-mythic" role="tabpanel"></section>
+  <section class="pane" id="pane-exotic" role="tabpanel"></section>
+  <section class="pane" id="pane-dev" role="tabpanel"></section>
+  <section class="pane" id="pane-retired" role="tabpanel"></section>
+
+  <footer>
+    <span>Tap a tile to mark it collected.</span>
+    <button class="link" id="reset">Reset all progress</button>
+    <span id="reset-confirm" hidden>This clears every check. <button class="link danger" id="reset-yes">Yes, clear</button> &middot; <button class="link" id="reset-no">Cancel</button></span>
+    <span class="spacer"></span>
+    <span>Dev chests are custom/fan-made and copied from the source image, not read from the live game.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var NEW = 1;
+  // [name, isNew]
+  var MYTHICS = [
+    ["The Foundation's MK-Seven AR",1],["The Foundation's Power Gloves",1],["Mythic Vector 7 DMR",1],["Ares' Warforged AR"],["Brute Nemesis AR"],["Enhanced Collateral Damage AR"],["Enhanced Enforcer Rifle"],["Enhanced Fury AR",1],["Enhanced Holo-Twister AR",1],
+    ["Enhanced Spire Rifle"],["Enhanced Striker Burst Rifle"],["Meowscles' Peow-Peow Rifle"],["Midas' Drum Gun (OG)"],["Nisha's Striker AR"],["Overclocked Pulse Rifle"],["Squibbly's Combat AR"],["Skye's AR",1],["Enhanced O.X.R. Rifle",1],
+    ["Sideways Rifle",1],["Brutus' Twin Hammer Shotguns"],["Enhanced Outlaw Shotgun"],["Enhanced Sentinel Shotgun"],["Enhanced Sweeper Shotgun"],["Oscar's Frenzy Auto Shotgun"],["Pinpoint Iron Pump"],["Two Shot Shotgun"],["Megalo Don's Combat Shotgun",1],
+    ["Cerberus' Gatekeeper Shotgun",1],["Enhanced Oni Shotgun"],["Enhanced Havoc Shotgun",1],["Enhanced Twinfire Auto Shotgun",1],["Brutus' Minigun"],["Sideways Minigun",1],["Bigfoot's Flex SMG"],["Hades' Harbinger SMG"],["Midas' Gilded Drum Gun"],
+    ["Valeria's Hyper SMG"],["Night Rose's Veiled Precision SMG",1],["Enhanced Surgefire SMG",1],["Baron's Double Down Pistol"],["Conductor's Hand Cannon"],["Enhanced Hand Cannon"],["Enhanced Hyperburst Pistol",1],["Overdrive Tactical Pistol"],["Enhanced Wrecker Revolver"],
+    ["Kor's Deadeye DMR"],["Zeus' Huntress DMR"],["Kit's Shockwave Launcher"],["Ringmaster's Boom Bolt"],["Skye's Grappler",1],["Jules' Glider Gun",1],["Mythic Goldfish",1]
+  ];
+  var EXOTICS = [
+    ["Heisted Explosive AR"],["Heisted Breacher Shotgun"],["Heisted Blink Mag SMG"],["Heisted Run 'N' Gun SMG"],["Lawless Accelerant Holo-Twister AR"],["Lawless Trinity AR"],["Lawless Twinfire Slap Shotgun"],["Lawless Explosive Mammoth Pistol"],["Lawless Tracking Sniper"],
+    ["Lawless Stink Rifle"],["Lawless Shockwave RPG"],["Unstable Frostfire Shotgun"],["Unstable Yoink Shotgun"],["Unstable Voltage Burst Pistol"],["Unstable Thunderclap DMR"],["Eradicator O.X.R. Rifle"],["Eradicator Hop Rock Fury AR"],["Eradicator Shadow Precision SMG"],
+    ["Eradicator Marksman Wrecker Revolver"],["Eradicator Shock 'N' Slow Launcher"],["The Dub"],["Hop Rock Dualies"],["Shadow Tracker"],["Spicy Slapperoni Pizza",1],["Golden Apple",1],["Lawless Slap Jug",1],["Lawless Slap Cannon",1],["Double Trouble Pump Shotgun",1],["Boom Sniper Rifle",1]
+  ];
+  // r: m = mythic, e = exotic (card colour in the source image)
+  var CHESTS = [
+    ["Overclocked Dev Chest", [["Lawless Trinity AR","e"],["Overclocked Pulse Rifle","m"],["Exotic Slapberry Fizz","m"],["Eradicator Hop Rock Fury AR","e"],["Eradicator Shock 'N' Slow Launcher","e"],["Bigfoot's Flex SMG","m"],["Reacher's Extending Focus Shotgun","m"]]],
+    ["Redesigned Chapter 4 Dev Chest", [["Heisted Breacher Shotgun","e"],["Heisted Blink Mag SMG","e"],["Mythic Shockwave Hammer","m"],["Mythic Ex-Caliber Rifle","m"],["Diamond's Thermal DMR","m"],["Thorne's Scoped Burst SMG","m"],["Mythic Tactical Pistol","m"]]],
+    ["Lawless Remastered Dev Chest", [["Lawless Trinity AR","e"],["Midas' Gilded Eye Drum Gun","m"],["Lawless Rift Rifle","e"],["Lawless Final Mark Sniper","e"],["Baron's Double Down Pistol","m"]]],
+    ["Boom Bolt Dev Chest V2", [["Hush's Deadeye AR","m"],["Eradicator Hop Rock Fury AR","e"],["Ringmaster's Boom Bolt","m"],["Eradicator Marksman Wrecker Revolver","e"],["Bigfoot's Flex SMG","m"]]],
+    ["Chapter 7 Season 2 Dev Chest", [["Mythic Pinpoint Pistol","m"],["Hop Rock Cube Rifle","e"],["The Foundation's Rift Rifle","e"],["Recon Bow","e"],["The Foundation's Power Gloves","m"]]]
+  ];
+  var RETIRED = [
+    ["Banned chest", [["The Foundation's MK-Seven AR","Mythic"],["The Foundation's Power Gloves","Mythic"],["Mythic Vector 7 DMR","Mythic"]]],
+    ["Legendary (orange tier)", [["Precision Air Strike","Legendary"]]],
+    ["Vaulted in Reload v42.20", [["Hammer Assault Rifle"],["Suppressed Assault Rifle"],["Iron Pump Shotgun"],["Twinmag SMG"],["Ranger Pistol"],["Tactical Pistol"],["Pistol"],["Slapperoni Slice"],["Chug Splash"]]]
+  ];
+
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, ""); }
+  function typeOf(n) {
+    if (/Shotgun|Pump|The Dub|Slap Cannon/i.test(n)) return "Shotgun";
+    if (/SMG|Drum Gun/i.test(n)) return "SMG";
+    if (/Pistol|Revolver|Hand Cannon|Dualies/i.test(n)) return "Pistol";
+    if (/Minigun|Launcher|RPG|Grappler|Glider|Gloves|Hammer|Goldfish|Pizza|Apple|Jug|Fizz|Air Strike/i.test(n)) return "Special";
+    if (/DMR|Sniper|Tracker|Bow|Boom Bolt/i.test(n)) return "Marksman";
+    return "Rifle";
+  }
+  function initials(n) {
+    var w = n.replace(/\(.*?\)/g, "").split(/\s+/).filter(function (x) { return !/^(the|of|n|'n')$/i.test(x); });
+    var s = (w[0] || "?")[0] + ((w[1] || "")[0] || "");
+    return s.toUpperCase();
+  }
+
+  var items = {};   // id -> item
+  var mainIds = {};
+  MYTHICS.forEach(function (a) { var it = items[slug(a[0])] = { id: slug(a[0]), name: a[0], r: "mythic", isNew: !!a[1], main: true, chests: [] }; mainIds[it.id] = 1; });
+  EXOTICS.forEach(function (a) { var it = items[slug(a[0])] = { id: slug(a[0]), name: a[0], r: "exotic", isNew: !!a[1], main: true, chests: [] }; mainIds[it.id] = 1; });
+  var chestLists = CHESTS.map(function (c) {
+    return { name: c[0], ids: c[1].map(function (a) {
+      var id = slug(a[0]);
+      if (!items[id]) items[id] = { id: id, name: a[0], r: a[1] === "m" ? "mythic" : "exotic", isNew: false, main: false, chests: [] };
+      items[id].chests.push(c[0].replace(/ Dev Chest/i, ""));
+      return id;
+    }) };
+  });
+  Object.keys(items).forEach(function (k) { items[k].type = typeOf(items[k].name); });
+  var devOnly = Object.keys(items).filter(function (k) { return !items[k].main; });
+
+  // state
+  var done = {}, prefs = { tab: "mythic" };
+  try { done = JSON.parse(localStorage.getItem("reload-ledger-done") || "{}") || {}; } catch (e) {}
+  try { var p = JSON.parse(localStorage.getItem("reload-ledger-prefs") || "{}"); if (p && p.tab) prefs.tab = p.tab; } catch (e) {}
+  function saveDone() { try { localStorage.setItem("reload-ledger-done", JSON.stringify(done)); } catch (e) {} }
+  function savePrefs() { try { localStorage.setItem("reload-ledger-prefs", JSON.stringify(prefs)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var q = $("q"), typeSel = $("type"), showSel = $("show"), newBtn = $("newonly");
+  ["All types", "Rifle", "Shotgun", "SMG", "Pistol", "Marksman", "Special"].forEach(function (t, i) {
+    var o = document.createElement("option"); o.value = i ? t : ""; o.textContent = t; typeSel.appendChild(o);
+  });
+
+  var TABS = [["mythic", "Mythics"], ["exotic", "Exotics"], ["dev", "Dev chests"], ["retired", "Banned & vaulted"]];
+  var tabsEl = $("tabs");
+  TABS.forEach(function (t) {
+    var b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role", "tab"); b.dataset.tab = t[0];
+    b.innerHTML = t[1] + '<span class="n" id="tn-' + t[0] + '"></span>';
+    b.addEventListener("click", function () { prefs.tab = t[0]; savePrefs(); render(); });
+    tabsEl.appendChild(b);
+  });
+
+  function passes(it) {
+    var s = q.value.trim().toLowerCase();
+    if (s && it.name.toLowerCase().indexOf(s) < 0) return false;
+    if (typeSel.value && it.type !== typeSel.value) return false;
+    if (showSel.value === "missing" && done[it.id]) return false;
+    if (showSel.value === "done" && !done[it.id]) return false;
+    if (newBtn.getAttribute("aria-pressed") === "true" && !it.isNew) return false;
+    return true;
+  }
+
+  function card(it) {
+    var b = document.createElement("button");
+    b.className = "card " + it.r;
+    b.dataset.id = it.id;
+    b.setAttribute("aria-pressed", done[it.id] ? "true" : "false");
+    var tags = '<span class="tag">' + it.type + '</span>';
+    if (it.isNew) tags += '<span class="tag new">New</span>';
+    if (!it.main) tags += '<span class="tag dev">Dev only</span>';
+    b.innerHTML = '<span class="tick" aria-hidden="true">&#10003;</span><span class="art" aria-hidden="true">' + initials(it.name) + '</span>' +
+      '<span class="body"><span class="name"></span><span class="tags">' + tags + '</span></span>';
+    b.querySelector(".name").textContent = it.name;
+    b.addEventListener("click", function () {
+      if (done[it.id]) delete done[it.id]; else done[it.id] = 1;
+      saveDone(); render();
+    });
+    return b;
+  }
+
+  function head(title, sub) {
+    var h = document.createElement("div"); h.className = "sec-head";
+    h.innerHTML = "<h2></h2><span class='sub'></span>";
+    h.querySelector("h2").textContent = title; h.querySelector(".sub").textContent = sub;
+    return h;
+  }
+  function grid(list) {
+    var g = document.createElement("div"); g.className = "grid";
+    list.forEach(function (it) { g.appendChild(card(it)); });
+    return g;
+  }
+  function emptyMsg() { var d = document.createElement("div"); d.className = "empty"; d.textContent = "Nothing matches these filters."; return d; }
+  function count(list) { return list.filter(function (it) { return done[it.id]; }).length; }
+
+  function renderPool(pane, rarity, title, note) {
+    pane.textContent = "";
+    var all = Object.keys(items).map(function (k) { return items[k]; }).filter(function (it) { return it.main && it.r === rarity; });
+    pane.appendChild(head(title, count(all) + " of " + all.length + " collected · " + note));
+    var shown = all.filter(passes);
+    pane.appendChild(shown.length ? grid(shown) : emptyMsg());
+  }
+
+  function renderDev(pane) {
+    pane.textContent = "";
+    var h = head("Fan-made / custom dev chests", chestLists.length + " chests · gold = mythic, cyan = exotic");
+    pane.appendChild(h);
+    var any = false;
+    chestLists.forEach(function (c) {
+      var list = c.ids.map(function (id) { return items[id]; });
+      var shown = list.filter(passes);
+      var g = document.createElement("div"); g.className = "group";
+      var gh = document.createElement("div"); gh.className = "group-head";
+      gh.innerHTML = "<h3></h3><span class='sub'></span>";
+      gh.querySelector("h3").textContent = c.name;
+      gh.querySelector(".sub").textContent = count(list) + "/" + list.length + " collected";
+      g.appendChild(gh);
+      if (shown.length) { any = true; g.appendChild(grid(shown)); } else { var e = emptyMsg(); e.style.paddingBlock = "4px"; g.appendChild(e); }
+      pane.appendChild(g);
+    });
+  }
+
+  function renderRetired(pane) {
+    pane.textContent = "";
+    pane.appendChild(head("Banned & vaulted", "Not tracked. Banned mythics also appear in the main Mythics tab."));
+    RETIRED.forEach(function (grp) {
+      var g = document.createElement("div"); g.className = "group";
+      var gh = document.createElement("div"); gh.className = "group-head";
+      gh.innerHTML = "<h3></h3><span class='sub'></span>";
+      gh.querySelector("h3").textContent = grp[0];
+      gh.querySelector(".sub").textContent = grp[1].length + " items";
+      g.appendChild(gh);
+      var r = document.createElement("div"); r.className = "retired";
+      grp[1].forEach(function (a) {
+        var d = document.createElement("div"); d.className = "ret";
+        d.innerHTML = "<div class='name'></div><div class='why'></div>";
+        d.querySelector(".name").textContent = a[0];
+        d.querySelector(".why").textContent = a[1] || "Vaulted";
+        r.appendChild(d);
+      });
+      g.appendChild(r); pane.appendChild(g);
+    });
+  }
+
+  function meter(key, list) {
+    var d = count(list);
+    $("n-" + key).textContent = d + " / " + list.length;
+    $("b-" + key).style.width = (list.length ? d / list.length * 100 : 0) + "%";
+  }
+
+  function render() {
+    var arr = Object.keys(items).map(function (k) { return items[k]; });
+    var mm = arr.filter(function (i) { return i.main && i.r === "mythic"; });
+    var ee = arr.filter(function (i) { return i.main && i.r === "exotic"; });
+    var dd = devOnly.map(function (k) { return items[k]; });
+    meter("mythic", mm); meter("exotic", ee); meter("dev", dd);
+    $("tn-mythic").textContent = mm.length; $("tn-exotic").textContent = ee.length;
+    $("tn-dev").textContent = chestLists.length; $("tn-retired").textContent = "";
+    Array.prototype.forEach.call(tabsEl.children, function (b) { b.setAttribute("aria-selected", b.dataset.tab === prefs.tab ? "true" : "false"); });
+    ["mythic", "exotic", "dev", "retired"].forEach(function (t) { $("pane-" + t).hidden = t !== prefs.tab; });
+    if (prefs.tab === "mythic") renderPool($("pane-mythic"), "mythic", "Mythics", "chest drop only");
+    else if (prefs.tab === "exotic") renderPool($("pane-exotic"), "exotic", "Exotics", "chest drop only");
+    else if (prefs.tab === "dev") renderDev($("pane-dev"));
+    else renderRetired($("pane-retired"));
+    $("q").parentNode.classList.toggle("on", prefs.tab !== "retired");
+  }
+
+  q.addEventListener("input", render);
+  typeSel.addEventListener("change", render);
+  showSel.addEventListener("change", render);
+  newBtn.addEventListener("click", function () {
+    newBtn.setAttribute("aria-pressed", newBtn.getAttribute("aria-pressed") === "true" ? "false" : "true"); render();
+  });
+  $("reset").addEventListener("click", function () { $("reset-confirm").hidden = false; $("reset").hidden = true; });
+  $("reset-no").addEventListener("click", function () { $("reset-confirm").hidden = true; $("reset").hidden = false; });
+  $("reset-yes").addEventListener("click", function () {
+    done = {}; saveDone(); $("reset-confirm").hidden = true; $("reset").hidden = false; render();
+  });
+  render();
+})();
+</script>
